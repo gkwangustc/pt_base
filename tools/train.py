@@ -22,6 +22,7 @@ from core.utils.save_load import load_model
 from core.utils.utility import set_seed
 import tools.program as program
 
+
 def main(config, device, logger, log_writer):
     global_config = config["Global"]
 
@@ -46,6 +47,7 @@ def main(config, device, logger, log_writer):
     # build model
     # for rec algorithm
     model = build_model(config["Architecture"])
+    model.to(device)
 
     # build loss
     loss_class = build_loss(config["Loss"])
@@ -69,7 +71,9 @@ def main(config, device, logger, log_writer):
     pre_best_model_dict = load_model(config, model, optimizer)
 
     if config["Global"]["distributed"]:
-        model = torch.DataParallel(model)
+        model = torch.nn.parallel.DistributedDataParallel(
+            model, device_ids=config["local_rank"]
+        )
     # start train
     program.train(
         config,
@@ -89,7 +93,7 @@ def main(config, device, logger, log_writer):
 
 
 if __name__ == "__main__":
-    config, device, logger, log_writer= program.preprocess(is_train=True)
+    config, device, logger, log_writer = program.preprocess(is_train=True)
     seed = config["Global"]["seed"] if "seed" in config["Global"] else 1024
     set_seed(seed)
     main(config, device, logger, log_writer)

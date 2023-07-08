@@ -51,10 +51,8 @@ def build_optimizer(config, epochs, step_each_epoch, model, loss=None):
     elif optim_name == "Adadelta":
         optimizer = optim.Adadelta(parameters)
     elif optim_name == "SGD":
-        optimizer = optim.SGD(parameters, lr=lr, momentum=0.9)
-        lr_scheduler = optim.lr_scheduler.StepLR(
-            optimizer, step_size=config["lr"]["step_size"]
-        )
+        optimizer = optim.SGD(parameters, lr=lr, momentum=0.9, weight_decay=5e-4)
+        lr_scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=200)
     else:
         optimizer = optim.RMSprop(parameters, lr=lr)
 

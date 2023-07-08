@@ -18,7 +18,7 @@ from core.utils.save_load import load_model
 import tools.program as program
 
 
-def main():
+def main(config, device, logger, log_writer):
     global_config = config["Global"]
     # build dataloader
     valid_dataloader = build_dataloader(config, "Eval", device, logger)
@@ -28,6 +28,7 @@ def main():
 
     # build model
     model = build_model(config["Architecture"])
+    model.to(device)
 
     # build metric
     eval_class = build_metric(config["Metric"])
@@ -39,7 +40,7 @@ def main():
             logger.info("{}:{}".format(k, v))
 
     # start eval
-    metric = program.eval(model, valid_dataloader, post_process_class, eval_class)
+    metric = program.eval(model, valid_dataloader, post_process_class, eval_class, device)
     logger.info("metric eval ***************")
     for k, v in metric.items():
         logger.info("{}:{}".format(k, v))
@@ -47,4 +48,4 @@ def main():
 
 if __name__ == "__main__":
     config, device, logger, log_writer= program.preprocess()
-    main()
+    main(config, device, logger, log_writer)

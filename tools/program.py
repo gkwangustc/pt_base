@@ -28,6 +28,20 @@ class ArgsParser(ArgumentParser):
         super(ArgsParser, self).__init__(formatter_class=RawDescriptionHelpFormatter)
         self.add_argument("-c", "--config", help="configuration file to use")
         self.add_argument("-o", "--opt", nargs="+", help="set configuration options")
+        self.add_argument(
+            "--world-size", default=1, type=int, help="number of distributed process"
+        )
+        self.add_argument(
+            "--dist-url",
+            default="env://",
+            type=str,
+            help="url used to set up distributed training",
+        )
+        self.add_argument(
+            "--dist-backend", default="nccl", type=str, help="distributed backend"
+        )
+        self.add_argument("--local_rank", default=0, type=int, help="local_rank")
+        self.add_argument("--global_rank", default=0, type=int, help="global_rank")
 
     def parse_args(self, argv=None):
         args = super(ArgsParser, self).parse_args(argv)
@@ -178,15 +192,8 @@ def train(
     )
 
     for epoch in range(start_epoch, epoch_num + 1):
-        if train_dataloader.dataset.need_reset:
-            train_dataloader = build_dataloader(
-                config, "Train", device, logger, seed=epoch
-            )
-            max_iter = (
-                len(train_dataloader) - 1
-                if platform.system() == "Windows"
-                else len(train_dataloader)
-            )
+        if config["Global"]["distributed"]:
+            train_dataloader.sampler.set_epoch(epoch)
 
         for idx, batch in enumerate(train_dataloader):
             train_reader_cost += time.time() - reader_start
@@ -196,11 +203,12 @@ def train(
                 lr = lr_scheduler.get_last_lr()
             else:
                 lr = lr_scheduler
-            images = batch[0]
+
+            model.zero_grad()
+            images = batch[0].to(device)
             preds = model(images)
             loss = loss_class(preds, batch)
             avg_loss = loss["loss"]
-            model.zero_grad()
             avg_loss.backward()
             optimizer.step()
 
@@ -273,6 +281,7 @@ def train(
                     valid_dataloader,
                     post_process_class,
                     eval_class,
+                    device,
                 )
                 cur_metric_str = "cur metric, {}".format(
                     ", ".join(["{}: {}".format(k, v) for k, v in cur_metric.items()])
@@ -372,6 +381,7 @@ def eval(
     valid_dataloader,
     post_process_class,
     eval_class,
+    device,
 ):
     model.eval()
     with torch.no_grad():
@@ -389,7 +399,7 @@ def eval(
         for idx, batch in enumerate(valid_dataloader):
             if idx >= max_iter:
                 break
-            images = batch[0]
+            images = batch[0].to(device)
             start = time.time()
 
             preds = model(images)
@@ -437,7 +447,7 @@ def preprocess(is_train=False):
         config["local_rank"] = 0
         config["Global"]["distributed"] = False
 
-    device = "cuda:{}".format(torch.cuda.current_device()) if use_gpu else "cpu"
+    device = "cuda:{}".format(config['local_rank']) if use_gpu else "cpu"
     device = torch.device(device)
 
     if is_train:

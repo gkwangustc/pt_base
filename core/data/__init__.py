@@ -63,7 +63,11 @@ def build_dataloader(config, mode, device, logger, seed=None):
         sampler = SequentialSampler(dataset)
 
     data_loader = DataLoader(
-        dataset=dataset, batch_size=batch_size, sampler=sampler, num_workers=num_workers
+        dataset=dataset,
+        batch_size=batch_size,
+        sampler=sampler,
+        num_workers=num_workers,
+        drop_last=drop_last,
     )
 
     return data_loader

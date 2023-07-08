@@ -39,9 +39,9 @@ class CELoss(nn.Module):
 class ClsLoss(nn.Module):
     def __init__(self, **kwargs):
         super(ClsLoss, self).__init__()
-        self.loss_func = nn.CrossEntropyLoss(reduction="mean")
+        self.loss_func = nn.CrossEntropyLoss()
 
     def forward(self, predicts, batch):
-        label = batch[1].long()
+        label = batch[1].long().to(predicts.device)
         loss = self.loss_func(predicts, label)
         return {"loss": loss}
