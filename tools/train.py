@@ -72,7 +72,7 @@ def main(config, device, logger, log_writer):
 
     if config["Global"]["distributed"]:
         model = torch.nn.parallel.DistributedDataParallel(
-            model, device_ids=config["local_rank"]
+            model, device_ids=[config["local_rank"]]
         )
     # start train
     program.train(
